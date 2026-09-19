@@ -141,4 +141,12 @@ git -C vendor/Compositor fetch origin && git -C vendor/Compositor checkout <comm
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Compositor is MIT, copyright Wonder Assembly LLC.
+This project is MIT, Copyright (c) 2026 Marcus Horndt. See [LICENSE](LICENSE).
+
+Compositor is MIT, Copyright (c) 2026 Wonder Assembly LLC. Its notice is kept
+verbatim at [`licenses/Compositor-LICENSE.txt`](licenses/Compositor-LICENSE.txt).
+No Compositor source is copied into this repository, and a binary you build from
+it should ship both notices. [NOTICE.md](NOTICE.md) explains the attribution and
+why the terms permit this.
+
+Not affiliated with or endorsed by Robbie Tilton or Wonder Assembly LLC.
