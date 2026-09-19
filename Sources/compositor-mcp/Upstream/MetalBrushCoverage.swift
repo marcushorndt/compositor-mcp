@@ -1,0 +1,1 @@
+../../../vendor/Compositor/Compositor/Rendering/MetalBrushCoverage.swift

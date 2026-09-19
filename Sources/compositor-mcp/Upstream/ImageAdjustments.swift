@@ -1,0 +1,1 @@
+../../../vendor/Compositor/Compositor/Document/ImageAdjustments.swift

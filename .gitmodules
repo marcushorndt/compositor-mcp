@@ -1,0 +1,3 @@
+[submodule "vendor/Compositor"]
+	path = vendor/Compositor
+	url = https://github.com/robbietilton/Compositor.git
