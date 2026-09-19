@@ -215,15 +215,39 @@ func removeLayerBackground(_ p: Params, _ store: DocumentStore) async throws -> 
         throw RPCError.internalError("The cutout could not be read as a PNG.")
     }
 
-    // The service always answers at 1024. Rather than lose the original
-    // resolution, keep its matte and carry only the alpha back onto the full
-    // size image.
+    // The service normalises to about one megapixel in 64-pixel steps, so the
+    // cutout rarely matches the input pixel for pixel. Its alpha can only be
+    // carried back onto the original when the shape survived that snapping;
+    // otherwise the image was cropped and stretching the alpha misaligns it.
+    let originalAspect = Double(original.width) / Double(original.height)
+    let cutAspect = Double(cut.width) / Double(cut.height)
+    let sameShape = abs(originalAspect - cutAspect) < 0.005
+
     var finished = cut
+    var reshaped: LayerTransform?
     var note = ""
-    if original.width > cut.width || original.height > cut.height {
-        finished = try applyAlpha(of: cut, to: original)
-        note = " The cutout came back at \(cut.width)x\(cut.height), so its alpha was carried onto the "
-             + "original \(original.width)x\(original.height) pixels."
+    if sameShape {
+        if original.width > cut.width {
+            finished = try applyAlpha(of: cut, to: original)
+            note = " The cutout came back at \(cut.width)x\(cut.height); its shape matched, so its alpha "
+                 + "was carried onto the original \(original.width)x\(original.height) pixels and no "
+                 + "resolution was lost."
+        }
+    } else {
+        // Its own pixels and alpha agree with each other, so they are used as
+        // they are, and the layer is reshaped so nothing is stretched.
+        var transform = source.transform
+        let centre = transform.center
+        transform.size = CGSize(width: (transform.size.height * cutAspect).rounded(),
+                                height: transform.size.height.rounded())
+        transform.origin = CGPoint(x: centre.x - transform.size.width / 2,
+                                   y: centre.y - transform.size.height / 2)
+        reshaped = transform
+        note = " The service returned \(cut.width)x\(cut.height) for a \(original.width)x"
+             + "\(original.height) layer, a different shape, so its own pixels were kept rather than "
+             + "mapping a mismatched alpha onto the original. The layer was reshaped to "
+             + "\(transform.size.width.clean)x\(transform.size.height.clean) around its centre so "
+             + "nothing is stretched. Send a square layer to keep full resolution."
     }
 
     let imported = try await decode(try pngData(finished), name: source.name)
@@ -234,8 +258,10 @@ func removeLayerBackground(_ p: Params, _ store: DocumentStore) async throws -> 
         return ToolResult("Cut \"\(source.name)\" out and added it as \"\(name)\".\(note)\nLayer id: \(id.uuidString)")
     }
     draft.images[source.id] = imported
+    if let reshaped { draft.manifest.layers[index] = source.withTransform(reshaped) }
     try await store.update(handle, to: draft.snapshot)
-    return ToolResult("Removed the background from \"\(source.name)\". Its transform is unchanged.\(note)")
+    let placement = reshaped == nil ? " Its transform is unchanged." : ""
+    return ToolResult("Removed the background from \"\(source.name)\".\(placement)\(note)")
 }
 
 /// Draws the original, then keeps only what the cutout's alpha covers.

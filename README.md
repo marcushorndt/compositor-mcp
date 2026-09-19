@@ -64,9 +64,12 @@ Claude: [generate_layer  "misty forest, low sun" 16:9 2048]
 A generated image arrives as an ordinary layer, so masks, blend modes and
 adjustments apply to it afterwards. Three details worth knowing:
 
-- `remove_layer_background` always comes back at 1024 pixels, because the
-  segmenter works at that size. For a larger layer only its alpha is carried
-  onto the original pixels, so no resolution is lost.
+- `remove_layer_background` normalises to about one megapixel in 64-pixel steps.
+  A square layer maps back exactly, so only its alpha is carried onto the
+  original pixels and no resolution is lost. A shape the service cannot hit
+  comes back slightly cropped, so the cutout's own pixels are used and the layer
+  is reshaped around its centre rather than stretching a mismatched alpha. Send a
+  square layer when you want full resolution.
 - `restyle_composition` renders the whole document and sends that composite to be
   restyled. The original layers stay below the result, untouched.
 - `list_generations` and `import_generation` re-use past work. Importing costs no

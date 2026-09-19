@@ -258,9 +258,11 @@ let contentMaschineTools: [[String: Any]] = [
 
     ["name": "remove_layer_background",
      "description": "Cuts a layer out to transparency with ContentMaschine's segmenter. Costs about "
-        + "0.2 credits. The service always answers at 1024 pixels, so for a larger layer only the "
-        + "alpha is carried back onto the original pixels and no resolution is lost. It cannot key "
-        + "white from white by colour, which is exactly why this semantic cutout is used.",
+        + "0.2 credits. It keys white from white correctly, which no colour key can do. The service "
+        + "normalises to about one megapixel in 64-pixel steps: a square layer maps back exactly, so "
+        + "only its alpha is carried onto the original pixels and no resolution is lost, while a shape "
+        + "it cannot hit is returned slightly cropped and the cutout's own pixels are used instead, "
+        + "with the layer reshaped around its centre. Send a square layer to keep full resolution.",
      "inputSchema": ["type": "object", "properties": [
         "document": str("Handle of an open document."),
         "layer": str("Layer to cut out."),
