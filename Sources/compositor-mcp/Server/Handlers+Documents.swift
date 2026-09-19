@@ -31,6 +31,15 @@ func callTool(_ name: String, _ params: Params, _ store: DocumentStore) async th
     case "resize_image":       return try await resizeImage(params, store)
     case "render_preview":     return try await renderPreview(params, store)
     case "export_image":       return try await exportImage(params, store)
+    // ContentMaschine
+    case "generate_layer":          return try await generateLayer(params, store)
+    case "vary_layer":              return try await varyLayer(params, store)
+    case "fuse_layers":             return try await fuseLayers(params, store)
+    case "remove_layer_background": return try await removeLayerBackground(params, store)
+    case "upscale_layer":           return try await upscaleLayer(params, store)
+    case "restyle_composition":     return try await restyleComposition(params, store)
+    case "list_generations":        return try await listGenerations(params)
+    case "import_generation":       return try await importGeneration(params, store)
     default: throw RPCError.methodNotFound("No tool named `\(name)`.")
     }
 }

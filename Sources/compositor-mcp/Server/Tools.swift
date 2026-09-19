@@ -1,4 +1,5 @@
 import Foundation
+import ContentMaschineKit
 
 // MARK: - Tool catalogue
 //
@@ -185,4 +186,118 @@ let toolCatalogue: [[String: Any]] = [
           "format": choice("Output format. Defaults to the path's extension, else PNG.", ["png", "jpeg"]),
           "quality": num("JPEG quality, 0 to 1. Defaults to 0.9.")],
          required: ["document", "path"]),
+] + contentMaschineTools
+
+// MARK: - ContentMaschine
+//
+// Generated images arrive as ordinary layers, so every other tool applies to
+// them afterwards.
+
+private let imageModels = ImageModel.allCases.map { $0.rawValue }
+private let aspectRatios = ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"]
+
+/// Arguments every generating tool shares.
+private var generationOptions: [String: Any] {
+    ["model": choice("Which model to use. Defaults to pro, which is the most reliable at "
+                     + "reproducing existing text and typography.", imageModels),
+     "aspect_ratio": choice("Shape of the generated image. Defaults to 1:1.", aspectRatios),
+     "resolution": ["type": "integer", "description":
+                    "Long edge in pixels: 1024 or 2048. Defaults to 2048. 4096 is not offered, "
+                    + "because the model tiles the background and corrupts type at that size.",
+                    "enum": [1024, 2048]],
+     "name": str("Layer name."),
+     "x": num("Left edge in canvas pixels. Defaults to centring."),
+     "y": num("Top edge in canvas pixels. Defaults to centring."),
+     "scale_percent": num("Size as a percentage of the generated image's own pixels."),
+     "fit": flag("Scale the image to fit the canvas.")]
+}
+
+private func generating(_ name: String, _ description: String,
+                        _ extra: [String: Any], required: [String]) -> [String: Any] {
+    var properties = generationOptions
+    for (key, value) in extra { properties[key] = value }
+    return ["name": name, "description": description,
+            "inputSchema": ["type": "object", "properties": properties,
+                            "required": required] as [String: Any]]
+}
+
+let contentMaschineTools: [[String: Any]] = [
+    generating("generate_layer",
+        "Generates an image from a text prompt with ContentMaschine and adds it to the document as a "
+        + "layer. Costs about one credit. Follow it with render_preview to see the composition.",
+        ["document": str("Handle of an open document."),
+         "prompt": str("What to generate. Be specific about subject, style and lighting.")],
+        required: ["document", "prompt"]),
+
+    generating("vary_layer",
+        "Sends a layer's pixels back to ContentMaschine for a variation and adds the result as a new "
+        + "layer. The original layer is left alone. Costs about one credit.",
+        ["document": str("Handle of an open document."),
+         "layer": str("Layer to vary. It must have pixels, so not a folder or adjustment layer."),
+         "prompt": str("How the variation should differ.")],
+        required: ["document", "layer", "prompt"]),
+
+    generating("fuse_layers",
+        "Fuses two or more layers into one new image, for mockups and composites. Fusion re-renders "
+        + "rather than pastes, so the result reproduces the sources rather than copying their pixels. "
+        + "Say which image supplies the artwork and which supplies only the camera angle and lighting. "
+        + "Costs about one credit.",
+        ["document": str("Handle of an open document."),
+         "layers": list("Layer ids to fuse, at least two, in the order the prompt refers to them.",
+                        of: "string"),
+         "prompt": str("How to combine them. Name image 1 and image 2 explicitly.")],
+        required: ["document", "layers", "prompt"]),
+
+    generating("restyle_composition",
+        "Renders the whole document, sends that composite to ContentMaschine, and adds the restyled "
+        + "result as a new layer on top. The existing layers stay below it, untouched. Use it to "
+        + "restyle a finished composition. Costs about one credit.",
+        ["document": str("Handle of an open document."),
+         "prompt": str("The style to apply to the whole composition.")],
+        required: ["document", "prompt"]),
+
+    ["name": "remove_layer_background",
+     "description": "Cuts a layer out to transparency with ContentMaschine's segmenter. Costs about "
+        + "0.2 credits. The service always answers at 1024 pixels, so for a larger layer only the "
+        + "alpha is carried back onto the original pixels and no resolution is lost. It cannot key "
+        + "white from white by colour, which is exactly why this semantic cutout is used.",
+     "inputSchema": ["type": "object", "properties": [
+        "document": str("Handle of an open document."),
+        "layer": str("Layer to cut out."),
+        "subject_hint": str("What the subject is, when the image is ambiguous."),
+        "as_new_layer": flag("Add the cutout as a new layer instead of replacing the layer's pixels."),
+        "name": str("Name for the new layer, when as_new_layer is set."),
+     ], "required": ["document", "layer"]] as [String: Any]],
+
+    ["name": "upscale_layer",
+     "description": "Upscales a layer's pixels with ContentMaschine. The layer keeps its place and "
+        + "size on the canvas and simply holds more detail. Takes a few minutes at higher scales.",
+     "inputSchema": ["type": "object", "properties": [
+        "document": str("Handle of an open document."),
+        "layer": str("Layer to upscale."),
+        "scale": ["type": "integer", "description": "How much to enlarge. Defaults to 2.",
+                  "enum": [2, 4, 6, 8]],
+     ], "required": ["document", "layer"]] as [String: Any]],
+
+    ["name": "list_generations",
+     "description": "Lists past ContentMaschine generations, newest first, with the prompt that made "
+        + "each one and its stored file id. Costs nothing. Check here before generating something "
+        + "again, because importing a stored file is free and returns the original bytes.",
+     "inputSchema": ["type": "object", "properties": [
+        "limit": int("How many to list. Defaults to 25."),
+     ], "required": []] as [String: Any]],
+
+    ["name": "import_generation",
+     "description": "Imports a stored ContentMaschine generation into the document as a layer, by its "
+        + "file id from list_generations. Costs no credits and returns the original file rather than "
+        + "a fresh render.",
+     "inputSchema": ["type": "object", "properties": [
+        "document": str("Handle of an open document."),
+        "file": str("The generation's file id, from list_generations."),
+        "name": str("Layer name."),
+        "x": num("Left edge in canvas pixels."),
+        "y": num("Top edge in canvas pixels."),
+        "scale_percent": num("Size as a percentage of the image's own pixels."),
+        "fit": flag("Scale the image to fit the canvas."),
+     ], "required": ["document", "file"]] as [String: Any]],
 ]

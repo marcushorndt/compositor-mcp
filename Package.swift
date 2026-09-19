@@ -6,10 +6,16 @@ let package = Package(
     platforms: [.macOS("26.0")],
     products: [
         .executable(name: "compositor-mcp", targets: ["compositor-mcp"]),
+        // Shared with Compositor's own "Generate Layer" panel.
+        .library(name: "ContentMaschineKit", targets: ["ContentMaschineKit"]),
     ],
     targets: [
         // Compositor's C pixel routines, compiled as their own module.
         .target(name: "CompositorC", publicHeadersPath: "include"),
+
+        // The ContentMaschine API client. No UI and no Compositor types, so the
+        // app can compile the same file.
+        .target(name: "ContentMaschineKit"),
 
         // Sources/compositor-mcp/Upstream holds symlinks to Compositor's own
         // document, IO and rendering sources. They compile unmodified: the
@@ -18,7 +24,7 @@ let package = Package(
         // without patching `public` onto upstream files.
         .executableTarget(
             name: "compositor-mcp",
-            dependencies: ["CompositorC"],
+            dependencies: ["CompositorC", "ContentMaschineKit"],
             swiftSettings: [
                 .swiftLanguageMode(.v5),
                 .unsafeFlags([

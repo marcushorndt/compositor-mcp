@@ -45,6 +45,42 @@ output. It does not paint pixels.
 | Adjustments | `add_adjustment_layer`, `describe_adjustment` (Levels, Curves, Hue/Saturation, Exposure, Gradient Map, Grain) |
 | Canvas | `resize_canvas`, `resize_image` |
 | Output | `render_preview`, `export_image` |
+| Generation | `generate_layer`, `vary_layer`, `fuse_layers`, `restyle_composition`, `remove_layer_background`, `upscale_layer`, `list_generations`, `import_generation` |
+
+### Image generation (optional)
+
+The generation tools call [ContentMaschine](https://contentmaschine.ai). They are
+inert without an API key, and every other tool works without one.
+
+```
+You:    generate a misty forest backdrop, drop the logo layer on it,
+        and cut the logo out of its background
+
+Claude: [generate_layer  "misty forest, low sun" 16:9 2048]
+        [remove_layer_background  logo]
+        [transform_layer] [render_preview]
+```
+
+A generated image arrives as an ordinary layer, so masks, blend modes and
+adjustments apply to it afterwards. Three details worth knowing:
+
+- `remove_layer_background` always comes back at 1024 pixels, because the
+  segmenter works at that size. For a larger layer only its alpha is carried
+  onto the original pixels, so no resolution is lost.
+- `restyle_composition` renders the whole document and sends that composite to be
+  restyled. The original layers stay below the result, untouched.
+- `list_generations` and `import_generation` re-use past work. Importing costs no
+  credits and returns the original file, so check there before generating again.
+
+Put the key in `~/.config/contentmaschine/credentials`:
+
+```
+CONTENTMASCHINE_API_KEY=...
+CONTENTMASCHINE_BASE_URL=https://contentmaschine.ai/api/v1
+```
+
+`CONTENTMASCHINE_API_KEY` and `CONTENTMASCHINE_BASE_URL` in the environment
+override the file. The key is never logged.
 
 **Not covered.** Compositor's interactive tools need a live editing session:
 brush, eraser, clone stamp, spot healing, smear and liquify, the gradient and
