@@ -210,13 +210,13 @@ func exportImage(_ p: Params, _ store: DocumentStore) async throws -> ToolResult
         let result = try await ImageExporter.shared.jpeg(raster, options: options)
         try await ImageExporter.shared.write(result.data, to: url)
         return ToolResult("""
-            Exported JPEG to \(url.path) — \(raster.image.width)x\(raster.image.height), \
+            Exported JPEG to \(url.path): \(raster.image.width)x\(raster.image.height), \
             \(byteLabel(result.data.count)), quality \(options.quality.clean).
             """)
     }
     try await ImageExporter.shared.exportPNG(snapshot, to: url)
     let size = (try? Data(contentsOf: url).count) ?? 0
-    return ToolResult("Exported PNG to \(url.path) — \(byteLabel(size)).")
+    return ToolResult("Exported PNG to \(url.path), \(byteLabel(size)).")
 }
 
 // MARK: - Small helpers

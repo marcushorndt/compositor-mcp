@@ -145,7 +145,7 @@ private func describeDocument(_ p: Params, _ store: DocumentStore) async throws 
     }
     let tree = lines.isEmpty ? "  (no layers)" : lines.joined(separator: "\n")
     return ToolResult("""
-        \(document.name) — \(manifest.width)x\(manifest.height) at \(Int(manifest.resolution ?? 72)) ppi, \
+        \(document.name): \(manifest.width)x\(manifest.height) at \(Int(manifest.resolution ?? 72)) ppi, \
         \(manifest.layers.count) layers\(document.isModified ? " (unsaved changes)" : "")
 
         Layers, top first:

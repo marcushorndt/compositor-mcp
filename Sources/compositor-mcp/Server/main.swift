@@ -1,6 +1,6 @@
 import Foundation
 
-// compositor-mcp — an MCP server for Compositor projects.
+// compositor-mcp: an MCP server for Compositor projects.
 //
 // It edits .comp documents headlessly, using Compositor's own document model,
 // renderer and project store, so what it produces is what the app opens.
