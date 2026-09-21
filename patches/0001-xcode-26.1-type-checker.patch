@@ -1,8 +1,8 @@
 diff --git a/Compositor/ContentView.swift b/Compositor/ContentView.swift
-index f62fff5..be29ccb 100644
+index d92e2da..2157fe1 100644
 --- a/Compositor/ContentView.swift
 +++ b/Compositor/ContentView.swift
-@@ -19,8 +19,9 @@ struct ContentView: View {
+@@ -21,8 +21,9 @@ struct ContentView: View {
          guard let workspace = applicationDelegate?.workspace else { return true }
          return workspace.canReceiveDrag(into: workspace.current.id)
      }
@@ -14,7 +14,7 @@ index f62fff5..be29ccb 100644
              if session.tool == .move {
                  TransformInspector(session: session).id(session.activeLayerID)
                  Divider()
-@@ -65,6 +66,12 @@ struct ContentView: View {
+@@ -71,6 +72,12 @@ struct ContentView: View {
                  }.padding(.horizontal, 18).toolHeaderBar()
                  Divider()
              }
@@ -27,17 +27,29 @@ index f62fff5..be29ccb 100644
              HStack(spacing: 0) {
                  toolRail
                  Divider()
-@@ -81,6 +88,10 @@ struct ContentView: View {
+@@ -102,6 +109,11 @@ struct ContentView: View {
              statusBar.fixedSize(horizontal: false, vertical: true)
                  .modifier(WidthReader(width: $windowWidth))
          }
 +    }
 +
-+    var body: some View {
++    // Split again for 1.1: the chain outgrew the type checker once more.
++    @ViewBuilder private var editorChrome: some View {
 +        editorStack
          .background(Color(white: 0.14))
          .background {
              if let applicationDelegate, applicationDelegate.projects.workspace == nil {
+@@ -174,6 +186,10 @@ struct ContentView: View {
+                 }.help("Zoom out (⌘−)").disabled(session.document == nil)
+             }
+         }
++    }
++
++    var body: some View {
++        editorChrome
+         .onChange(of: session.levels == nil) { _, closed in
+             if closed { levelsPanel.close() }
+             else {
 diff --git a/Compositor/Document/ImageAdjustments.swift b/Compositor/Document/ImageAdjustments.swift
 index 5255771..ef4841c 100644
 --- a/Compositor/Document/ImageAdjustments.swift
