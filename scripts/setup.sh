@@ -38,7 +38,7 @@ find "$c_target" -maxdepth 1 -name '*.c' -delete
 # Files that need AppKit windows, Sparkle, or a live editor session.
 exclude="CompositorApplicationDelegate.swift EditorCanvas.swift BrushCursorOverlay.swift \
 SampleRingOverlay.swift TransformOverlay.swift ImageFileDrop.swift ProjectController.swift \
-ProjectWorkspace.swift"
+ProjectWorkspace.swift InlineTextEditor.swift"
 
 linked=0
 for dir in Document IO Rendering; do

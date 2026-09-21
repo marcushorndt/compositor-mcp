@@ -81,6 +81,15 @@ private func saveDocument(_ p: Params, _ store: DocumentStore) async throws -> T
         throw RPCError.invalidParams("This document has never been saved. Pass `path`.")
     }
     let target = url.pathExtension.lowercased() == "comp" ? url : url.appendingPathExtension("comp")
+    let dimmed = document.snapshot.manifest.layers.filter(\.isUnsaveableFolderOpacity)
+    guard dimmed.isEmpty else {
+        let names = dimmed.map { "\"\($0.name)\" (\(Int(((($0.opacity ?? 1) * 100)).rounded()))%)" }
+        throw RPCError.invalidParams(
+            "Compositor cannot save a folder with reduced opacity yet: " + names.joined(separator: ", ")
+            + ". Its renderer supports folder opacity, but the project format rejects it on save. "
+            + "Set the folder back to 100% with set_layer, or dim the layers inside it instead. "
+            + "export_image still works with the folder dimmed.")
+    }
     try await ProjectStore.shared.save(document.snapshot, to: target)
     try await store.markSaved(handle, url: target)
     return ToolResult("Saved to \(target.path)")
@@ -127,6 +136,9 @@ private func describeDocument(_ p: Params, _ store: DocumentStore) async throws 
         if let b = l.blendMode, b != .normal { parts.append(b.rawValue) }
         if l.maskFile != nil { parts.append(l.maskEnabled == false ? "mask (off)" : "mask") }
         if l.maskSourceID != nil { parts.append("clipped") }
+        if let effects = l.effects, !effects.isEmpty {
+            parts.append("effects: " + effects.kinds.map { "\($0)" }.joined(separator: ", "))
+        }
         if !l.isVisible { parts.append("hidden") }
         lines.append("\(indent)\(l.name)  [\(l.kindLabel)]  \(parts.joined(separator: ", "))")
         lines.append("\(indent)  id: \(l.id.uuidString)")
@@ -200,9 +212,10 @@ private func setLayer(_ p: Params, _ store: DocumentStore) async throws -> ToolR
     let index = try snapshot.layerIndex(try p.string("layer"))
     var record = snapshot.manifest.layers[index]
     var changes: [String] = []
+    var warning = ""
 
     if let name = p.string("name", default: nil) {
-        record = record.renamed(name)
+        record = try record.renamed(name)
         changes.append("name -> \(name)")
     }
     if let visible = p.bool("visible", default: nil) {
@@ -213,8 +226,19 @@ private func setLayer(_ p: Params, _ store: DocumentStore) async throws -> ToolR
         guard (0...1).contains(opacity) else { throw RPCError.invalidParams("`opacity` must be between 0 and 1.") }
         record.opacity = opacity
         changes.append("opacity -> \(Int((opacity * 100).rounded()))%")
+        if record.isUnsaveableFolderOpacity {
+            warning = "\n\nNote: Compositor renders and exports a dimmed folder, but its project format "
+                + "(version 8) cannot save one yet, so save_document will refuse this document until the "
+                + "folder is back at 100%. To keep a .comp file, dim the layers inside the folder instead."
+        }
     }
     if let mode = try blendMode(p) {
+        // Compositor keeps blending on the layers themselves; a folder is always
+        // Normal, and the project format rejects anything else.
+        guard !record.isGroupLayer || mode == .normal else {
+            throw RPCError.invalidParams("\"\(record.name)\" is a folder, and Compositor folders always "
+                + "blend Normal. Set the blend mode on the layers inside it instead.")
+        }
         record.blendMode = mode
         changes.append("blend -> \(mode.rawValue)")
     }
@@ -223,7 +247,7 @@ private func setLayer(_ p: Params, _ store: DocumentStore) async throws -> ToolR
     }
     snapshot.manifest.layers[index] = record
     try await store.update(handle, to: snapshot.snapshot)
-    return ToolResult("Updated \"\(record.name)\": \(changes.joined(separator: ", ")).")
+    return ToolResult("Updated \"\(record.name)\": \(changes.joined(separator: ", ")).\(warning)")
 }
 
 private func transformLayer(_ p: Params, _ store: DocumentStore) async throws -> ToolResult {
@@ -253,7 +277,7 @@ private func transformLayer(_ p: Params, _ store: DocumentStore) async throws ->
     }
     guard transform.isValid else { throw RPCError.invalidParams("That transform is out of range.") }
 
-    record = record.withTransform(transform)
+    record = try record.withTransform(transform)
     snapshot.manifest.layers[index] = record
     try await store.update(handle, to: snapshot.snapshot)
     return ToolResult("""
@@ -326,7 +350,7 @@ private func duplicateLayer(_ p: Params, _ store: DocumentStore) async throws ->
         throw RPCError.invalidParams("Folders cannot be duplicated yet. Duplicate the layers inside it.")
     }
     let id = UUID()
-    let copy = original.copied(as: id, named: p.string("name", default: original.name + " copy")!)
+    let copy = try original.copied(as: id, named: p.string("name", default: original.name + " copy")!)
     if let image = snapshot.images[original.id] { snapshot.images[id] = image }
     if let mask = snapshot.masks[original.id] { snapshot.masks[id] = mask }
     snapshot.manifest.layers.insert(copy, at: index + 1)

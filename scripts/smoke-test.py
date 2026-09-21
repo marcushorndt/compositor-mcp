@@ -73,8 +73,11 @@ def main():
     check("initialize", init["result"]["serverInfo"]["name"] == "compositor-mcp")
     server.send("notifications/initialized", notify=True)
 
-    tools = server.send("tools/list")["result"]["tools"]
-    check("tools/list", len(tools) == 20, f"got {len(tools)}")
+    tools = {t["name"] for t in server.send("tools/list")["result"]["tools"]}
+    expected = {"create_document", "open_document", "save_document", "describe_document",
+                "import_image", "set_layer", "transform_layer", "render_preview", "export_image",
+                "generate_layer", "remove_layer_background", "list_generations"}
+    check("tools/list", expected <= tools, f"missing {sorted(expected - tools)}")
 
     text, failed, _ = server.call("create_document", {"width": 900, "height": 600, "name": "Smoke"})
     check("create_document", not failed)

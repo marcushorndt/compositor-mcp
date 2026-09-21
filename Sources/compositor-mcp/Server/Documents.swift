@@ -122,9 +122,16 @@ extension ProjectSnapshot {
 extension ProjectLayerRecord {
     var isGroupLayer: Bool { isGroup == true }
 
+    /// Compositor 1.1 renders a folder's opacity but its project format still
+    /// rejects it on save (ProjectStore.validate), so a dimmed folder cannot be
+    /// written to a .comp file yet.
+    var isUnsaveableFolderOpacity: Bool { isGroupLayer && (opacity ?? 1) != 1 }
+
     var kindLabel: String {
         if isGroupLayer { return "folder" }
         if let adjustment { return "adjustment (\(adjustment.kind.rawValue))" }
+        if let text { return "text \"\(text.content.prefix(40))\", \(text.fontName) \(Double(text.fontSize).clean)pt" }
+        if shape != nil { return "shape" }
         if imageFile != nil { return "image" }
         return "empty"
     }

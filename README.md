@@ -41,7 +41,7 @@ output. It does not paint pixels.
 | Documents | `create_document`, `open_document`, `save_document`, `close_document`, `list_documents`, `describe_document` |
 | Layers | `import_image`, `set_layer`, `delete_layer`, `duplicate_layer`, `reorder_layer`, `group_layers` |
 | Transform | `transform_layer` (move, scale, rotate, flip, sampling) |
-| Compositing | opacity and all 13 blend modes, folders, `set_clipping_mask` |
+| Compositing | opacity and all 14 blend modes, folders, `set_clipping_mask` |
 | Adjustments | `add_adjustment_layer`, `describe_adjustment` (Levels, Curves, Hue/Saturation, Exposure, Gradient Map, Grain) |
 | Canvas | `resize_canvas`, `resize_image` |
 | Output | `render_preview`, `export_image` |
@@ -84,6 +84,27 @@ CONTENTMASCHINE_BASE_URL=https://contentmaschine.ai/api/v1
 
 `CONTENTMASCHINE_API_KEY` and `CONTENTMASCHINE_BASE_URL` in the environment
 override the file. The key is never logged.
+
+### Compatibility
+
+Built against **Compositor 1.1.8**, project format version 8. It reads and writes
+format 8 and opens every older version.
+
+Compositor 1.1 added text layers and layer effects (stroke, drop shadow, colour
+overlay, inner shadow). The server does not create them, but it keeps them:
+`describe_document` shows a text layer's content and font and lists its effects,
+the renderer draws the effects, and moving, renaming or duplicating such a layer
+carries its text and effects over intact.
+
+Two limits come from Compositor itself, not from this server:
+
+- **A dimmed folder cannot be saved yet.** Compositor renders a folder's opacity,
+  but its project format still rejects a folder below 100% on save.
+  `set_layer` warns when you dim one, `save_document` refuses with the reason, and
+  `export_image` works regardless. To keep a `.comp` file, dim the layers inside
+  the folder instead.
+- **Folders always blend Normal.** Blending belongs to each layer, so `set_layer`
+  refuses a blend mode on a folder.
 
 **Not covered.** Compositor's interactive tools need a live editing session:
 brush, eraser, clone stamp, spot healing, smear and liquify, the gradient and

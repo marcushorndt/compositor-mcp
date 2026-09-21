@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 import PackageDescription
 
 let package = Package(
@@ -18,8 +18,10 @@ let package = Package(
         .target(name: "ContentMaschineKit"),
 
         // Sources/compositor-mcp/Upstream holds symlinks to Compositor's own
-        // document, IO and rendering sources. They compile unmodified: the
-        // bridging header reproduces the app target's setup. The server code in
+        // document, IO and rendering sources. They compile unmodified because the
+        // settings below reproduce the app target's: the bridging header, Swift 5
+        // mode, MainActor as the default isolation, Approachable Concurrency and
+        // member import visibility (see Compositor.xcodeproj). The server code in
         // Server/ lives in the same module so it can use those internal types
         // without patching `public` onto upstream files.
         .executableTarget(
@@ -27,6 +29,16 @@ let package = Package(
             dependencies: ["CompositorC", "ContentMaschineKit"],
             swiftSettings: [
                 .swiftLanguageMode(.v5),
+                // SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor
+                .defaultIsolation(MainActor.self),
+                // SWIFT_APPROACHABLE_CONCURRENCY = YES
+                .enableUpcomingFeature("DisableOutwardActorInference"),
+                .enableUpcomingFeature("GlobalActorIsolatedTypesUsability"),
+                .enableUpcomingFeature("InferIsolatedConformances"),
+                .enableUpcomingFeature("InferSendableFromCaptures"),
+                .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+                // SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES
+                .enableUpcomingFeature("MemberImportVisibility"),
                 .unsafeFlags([
                     "-import-objc-header", "Bridging/Bridging.h",
                     "-Xcc", "-ISources/CompositorC/include",

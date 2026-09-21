@@ -6,7 +6,7 @@ macOS by Robbie Tilton (Wonder Assembly LLC).
 - Upstream: https://github.com/robbietilton/Compositor
 - Upstream license: MIT, Copyright (c) 2026 Wonder Assembly LLC
 - Full upstream license text: [`licenses/Compositor-LICENSE.txt`](licenses/Compositor-LICENSE.txt)
-- Pinned commit: `a19db9011282399785dc18efcfded904627bdcc2`
+- Pinned commit: `c39da13` (Compositor 1.1.8, project format version 8)
 
 Compositor holds the document model, the compositing renderer and the `.comp`
 project format. This repository adds an MCP server on top of them.

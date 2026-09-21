@@ -273,29 +273,41 @@ extension CGFloat {
 // MARK: - Record edits
 //
 // ProjectLayerRecord stores id, name, transform and imageFile as `let`, so
-// changing them rebuilds the record.
+// changing them rebuilds the record. It is rebuilt through Codable rather than
+// field by field: listing the fields by hand silently dropped the layer effects
+// and text styles Compositor 1.1 added, and would drop whatever comes next.
 
 extension ProjectLayerRecord {
-    private func rebuilt(id newID: UUID? = nil, name newName: String? = nil,
-                         transform newTransform: LayerTransform? = nil,
-                         imageFile newImageFile: String?? = nil,
-                         maskFile newMaskFile: String?? = nil) -> ProjectLayerRecord {
-        ProjectLayerRecord(
-            id: newID ?? id, name: newName ?? name, isVisible: isVisible,
-            transform: newTransform ?? transform,
-            imageFile: newImageFile ?? imageFile,
-            parentID: parentID, isGroup: isGroup, opacity: opacity, blendMode: blendMode,
-            maskFile: newMaskFile ?? maskFile, maskEnabled: maskEnabled, maskSourceID: maskSourceID,
-            adjustment: adjustment, maskPlacement: maskPlacement, maskLinked: maskLinked, shape: shape)
+    private func rebuilt(_ edit: (inout [String: Any]) throws -> Void) throws -> ProjectLayerRecord {
+        guard var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(self))
+                as? [String: Any] else {
+            throw RPCError.internalError("Could not read the layer record.")
+        }
+        try edit(&object)
+        return try JSONDecoder().decode(ProjectLayerRecord.self,
+                                        from: JSONSerialization.data(withJSONObject: object))
     }
 
-    func renamed(_ newName: String) -> ProjectLayerRecord { rebuilt(name: newName) }
-    func withTransform(_ newTransform: LayerTransform) -> ProjectLayerRecord { rebuilt(transform: newTransform) }
+    private static func json<T: Encodable>(_ value: T) throws -> Any {
+        try JSONSerialization.jsonObject(with: JSONEncoder().encode(value), options: [.fragmentsAllowed])
+    }
 
-    /// A copy under a new id, pointing at its own asset files.
-    func copied(as newID: UUID, named newName: String) -> ProjectLayerRecord {
-        rebuilt(id: newID, name: newName,
-                imageFile: imageFile == nil ? .some(nil) : .some("\(newID.uuidString).png"),
-                maskFile: maskFile == nil ? .some(nil) : .some("\(newID.uuidString).mask.png"))
+    func renamed(_ newName: String) throws -> ProjectLayerRecord {
+        try rebuilt { $0["name"] = newName }
+    }
+
+    func withTransform(_ newTransform: LayerTransform) throws -> ProjectLayerRecord {
+        try rebuilt { $0["transform"] = try Self.json(newTransform) }
+    }
+
+    /// A copy under a new id, pointing at its own asset files. Every other
+    /// field, effects and text included, carries over.
+    func copied(as newID: UUID, named newName: String) throws -> ProjectLayerRecord {
+        try rebuilt {
+            $0["id"] = newID.uuidString
+            $0["name"] = newName
+            if imageFile != nil { $0["imageFile"] = "\(newID.uuidString).png" }
+            if maskFile != nil { $0["maskFile"] = "\(newID.uuidString).mask.png" }
+        }
     }
 }

@@ -258,7 +258,7 @@ func removeLayerBackground(_ p: Params, _ store: DocumentStore) async throws -> 
         return ToolResult("Cut \"\(source.name)\" out and added it as \"\(name)\".\(note)\nLayer id: \(id.uuidString)")
     }
     draft.images[source.id] = imported
-    if let reshaped { draft.manifest.layers[index] = source.withTransform(reshaped) }
+    if let reshaped { draft.manifest.layers[index] = try source.withTransform(reshaped) }
     try await store.update(handle, to: draft.snapshot)
     let placement = reshaped == nil ? " Its transform is unchanged." : ""
     return ToolResult("Removed the background from \"\(source.name)\".\(placement)\(note)")
